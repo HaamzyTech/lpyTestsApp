@@ -13,11 +13,11 @@ router.use(express.json())
  */
 router.post('/users/register', ( req, res)=> {
 
-  const { username, userdob, useremail, userpassword } = req.body
+  const { name, dob, email, password } = req.body
   
-  if (!(username && useremail && userdob && userpassword)) res.status(400).send("All inputs are required")
+  if (!(name && email && dob && password)) res.status(400).send("All inputs are required")
 
-  User.find({email:useremail }).exec()
+  User.find({email:email }).exec()
     .then( users => {
         if (users.length >= 1 ){
             return res.status(409).json({
@@ -25,7 +25,7 @@ router.post('/users/register', ( req, res)=> {
             })
         }
         else{
-            bcrypt.hash(userpassword,10, (err, hash)=>{
+            bcrypt.hash(password,10, (err, hash)=>{
                 if (err){
                     return res.status(500).json({
                         error: err
@@ -33,9 +33,9 @@ router.post('/users/register', ( req, res)=> {
                 }
                 else{
                     const user = new User({
-                        name:username,
-                        dob:userdob,
-                        email:useremail,
+                        name:name,
+                        dob:dob,
+                        email:email,
                         password:hash
                     })
 
@@ -52,8 +52,8 @@ router.post('/users/register', ( req, res)=> {
 
 router.put('/users/update/:id', checkAuth, (req, res)=> {
 
-    const { username, userdob, useremail, userpassword } = req.body
-    if (!(username && useremail && userdob && userpassword)) res.status(400).send("All inputs are required")
+    const { name, dob, email, password } = req.body
+    if (!(name && email && dob && password)) res.status(400).send("All inputs are required")
 
     User.findOne({id:req.params.id})
         .exec()
@@ -62,14 +62,14 @@ router.put('/users/update/:id', checkAuth, (req, res)=> {
                 message: "User not found"
             })
             
-            user.name = username
-            user.dob = userdob
-            user.email = useremail
+            user.name = name
+            user.dob = dob
+            user.email = email
 
             User.updateOne({id:req.params.id},user)
             .exec()
             .then( result =>{
-               return res.status(200).send(result)
+               return res.sendStatus(200).send(result)
             })
         })
 
@@ -77,11 +77,11 @@ router.put('/users/update/:id', checkAuth, (req, res)=> {
 
 router.post('/users/login', (req,res) => {
 
-    User.find({email:req.body.useremail})
+    User.find({email:req.body.email})
         .exec()
         .then( users => {
             if (users.length < 1 ) return res.sendStatus(404).json({message:"user not found"})
-            bcrypt.compare(req.body.userpassword, users[0].password, (err, isEqual) =>{
+            bcrypt.compare(req.body.password, users[0].password, (err, isEqual) =>{
                 if (err) return res.sendStatus(401)
                 if (isEqual) {
                     const token = jwt.sign(
@@ -97,7 +97,8 @@ router.post('/users/login', (req,res) => {
 
                     return res.status(200).json({
                         message:"login successful",
-                        token:token
+                        token:token,
+                        user: { _id, name,email,dob} = users[0]
                     })
                 }
                 res.sendStatus(401)
@@ -113,7 +114,7 @@ router.post('/users/login', (req,res) => {
 
 router.get('/users/:id',checkAuth, ( req, res) => {
 
-    User.findOne({id:req.params.id})
+    User.findOne({_id:req.params.id})
         .exec()
         .then( user => {
             if (!user  || user == null ) return res.status(400).json({
